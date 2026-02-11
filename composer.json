@@ -1,0 +1,21 @@
+{
+    "name": "tandrezone/homecontrolapi",
+    "description": "Professional PHP Smart Home API with PSR-12 standards",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "HomeControl\\": "src/"
+        }
+    },
+    "scripts": {
+        "lint": "phpcs --standard=PSR12 src/",
+        "lint-fix": "phpcbf --standard=PSR12 src/"
+    }
+}
