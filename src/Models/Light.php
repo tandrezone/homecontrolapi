@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace HomeControl\Models;
 
+use HomeControl\Features\OnOffFeature;
+use HomeControl\Features\BrightnessFeature;
+use HomeControl\Features\ColorFeature;
+
 class Light extends Device
 {
-    private int $brightness;
-    private string $color;
-
     public function __construct(
         int $id,
         string $name,
@@ -17,47 +18,59 @@ class Light extends Device
         int $brightness = 100,
         string $color = '#FFFFFF'
     ) {
-        parent::__construct($id, $name, 'light', $state, $roomId);
-        $this->brightness = $brightness;
-        $this->color = $color;
+        parent::__construct($id, $name, 'light', $roomId);
+
+        // Add features
+        $this->addFeature(new OnOffFeature($state));
+        $this->addFeature(new BrightnessFeature($brightness));
+        $this->addFeature(new ColorFeature($color));
     }
 
+    // Backward compatibility methods
     public function getBrightness(): int
     {
-        return $this->brightness;
+        $feature = $this->getFeature('brightness');
+        return $feature ? $feature->getValue() : 100;
     }
 
     public function setBrightness(int $brightness): void
     {
-        if ($brightness < 0 || $brightness > 100) {
-            throw new \InvalidArgumentException('Brightness must be between 0 and 100');
+        $feature = $this->getFeature('brightness');
+        if ($feature) {
+            $feature->setValue($brightness);
         }
-        $this->brightness = $brightness;
     }
 
     public function getColor(): string
     {
-        return $this->color;
+        $feature = $this->getFeature('color');
+        return $feature ? $feature->getValue() : '#FFFFFF';
     }
 
     public function setColor(string $color): void
     {
-        if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $color)) {
-            throw new \InvalidArgumentException('Color must be a valid hex color code');
+        $feature = $this->getFeature('color');
+        if ($feature) {
+            $feature->setValue($color);
         }
-        $this->color = $color;
     }
 
     public function toArray(): array
     {
+        $features = [];
+        foreach ($this->features as $feature) {
+            $features[$feature->getId()] = $feature->toArray();
+        }
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'type' => $this->type,
-            'state' => $this->state,
             'roomId' => $this->roomId,
-            'brightness' => $this->brightness,
-            'color' => $this->color,
+            'state' => $this->getState(), // Backward compatibility
+            'brightness' => $this->getBrightness(), // Backward compatibility
+            'color' => $this->getColor(), // Backward compatibility
+            'features' => $features,
         ];
     }
 }

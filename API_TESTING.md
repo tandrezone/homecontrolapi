@@ -17,7 +17,21 @@ php -S localhost:8080 index.php
 curl -X GET http://localhost:8080/health | jq .
 ```
 
-### 2. Get All Rooms
+### 2. Get All Available Features
+```bash
+curl -X GET http://localhost:8080/features | jq .
+```
+
+### 3. Get Specific Feature
+```bash
+# Get brightness feature details
+curl -X GET http://localhost:8080/features/brightness | jq .
+
+# Get temperature feature details
+curl -X GET http://localhost:8080/features/temperature | jq .
+```
+
+### 4. Get All Rooms
 ```bash
 curl -X GET http://localhost:8080/rooms | jq .
 ```
@@ -63,7 +77,12 @@ curl -X PUT http://localhost:8080/state \
 
 ### 7. Update Light Settings
 ```bash
-# Update brightness
+# Update brightness (backward compatible)
+curl -X PATCH http://localhost:8080/settings \
+  -H "Content-Type: application/json" \
+  -d '{"deviceId": 1, "brightness": 75}' | jq .
+
+# Update brightness (using feature ID)
 curl -X PATCH http://localhost:8080/settings \
   -H "Content-Type: application/json" \
   -d '{"deviceId": 1, "brightness": 75}' | jq .
@@ -81,10 +100,15 @@ curl -X PATCH http://localhost:8080/settings \
 
 ### 8. Update Thermostat Settings
 ```bash
-# Update target temperature
+# Update target temperature (backward compatible)
 curl -X PATCH http://localhost:8080/settings \
   -H "Content-Type: application/json" \
   -d '{"deviceId": 3, "targetTemperature": 23.5}' | jq .
+
+# Update target temperature (using feature ID)
+curl -X PATCH http://localhost:8080/settings \
+  -H "Content-Type: application/json" \
+  -d '{"deviceId": 3, "temperature": 23.5}' | jq .
 
 # Update mode
 curl -X PATCH http://localhost:8080/settings \
@@ -94,7 +118,7 @@ curl -X PATCH http://localhost:8080/settings \
 # Update both temperature and mode
 curl -X PATCH http://localhost:8080/settings \
   -H "Content-Type: application/json" \
-  -d '{"deviceId": 3, "targetTemperature": 24.5, "mode": "heat"}' | jq .
+  -d '{"deviceId": 3, "temperature": 24.5, "mode": "heat"}' | jq .
 ```
 
 ## Error Testing
