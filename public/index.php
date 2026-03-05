@@ -11,6 +11,19 @@ use HomeControl\Middleware\JsonMiddleware;
 use HomeControl\Repository\HomeRepository;
 use HomeControl\Models\Light;
 use HomeControl\Models\Thermostat;
+use HomeControl\Features\FeatureRegistry;
+use HomeControl\Features\OnOffFeature;
+use HomeControl\Features\BrightnessFeature;
+use HomeControl\Features\ColorFeature;
+use HomeControl\Features\TemperatureFeature;
+use HomeControl\Features\ModeFeature;
+
+// Register available features
+FeatureRegistry::register(OnOffFeature::class);
+FeatureRegistry::register(BrightnessFeature::class);
+FeatureRegistry::register(ColorFeature::class);
+FeatureRegistry::register(TemperatureFeature::class);
+FeatureRegistry::register(ModeFeature::class);
 
 // Apply JSON middleware
 JsonMiddleware::apply();
@@ -27,6 +40,22 @@ $router->get('/health', function () use ($repository): Response {
         'service' => 'Smart Home API',
         'version' => '1.0.0',
     ]);
+});
+
+// GET /features - Get all available features
+$router->get('/features', function (): Response {
+    return new Response([
+        'features' => FeatureRegistry::getAllFeatureInfo(),
+    ]);
+});
+
+// GET /features/{id} - Get a specific feature
+$router->get('/features/{id}', function (string $id): Response {
+    $feature = FeatureRegistry::getFeatureInfo($id);
+    if (!$feature) {
+        return new Response(['error' => 'Feature not found'], 404);
+    }
+    return new Response(['feature' => $feature]);
 });
 
 // GET /rooms - Get all rooms
@@ -114,8 +143,13 @@ $router->put('/state', function () use ($repository): Response {
         return new Response(['error' => 'Device ID is required'], 400);
     }
 
-    if (!$validator->validateDeviceId($data['deviceId']) || !$validator->validateState($data)) {
+    if (!$validator->validateDeviceId($data['deviceId'])) {
         return new Response(['errors' => $validator->getErrors()], 400);
+    }
+
+    // For backward compatibility, accept 'state' parameter
+    if (isset($data['state'])) {
+        $data['on_off'] = $data['state'];
     }
 
     $device = $repository->getDeviceById((int)$data['deviceId']);
@@ -124,13 +158,22 @@ $router->put('/state', function () use ($repository): Response {
         return new Response(['error' => 'Device not found'], 404);
     }
 
-    $device->setState($data['state']);
-    $repository->updateDevice($device);
+    try {
+        $feature = $device->getFeature('on_off');
+        if (!$feature) {
+            return new Response(['error' => 'Device does not support on/off functionality'], 400);
+        }
 
-    return new Response([
-        'message' => 'Device state updated successfully',
-        'device' => $device->toArray(),
-    ]);
+        $feature->setValue($data['on_off'] ?? $data['state']);
+        $repository->updateDevice($device);
+
+        return new Response([
+            'message' => 'Device state updated successfully',
+            'device' => $device->toArray(),
+        ]);
+    } catch (\InvalidArgumentException $e) {
+        return new Response(['error' => $e->getMessage()], 400);
+    }
 });
 
 // PATCH /settings - Update device settings (brightness, color, temperature, etc.)
@@ -153,37 +196,17 @@ $router->patch('/settings', function () use ($repository): Response {
     }
 
     try {
-        // Update Light settings
-        if ($device instanceof Light) {
-            if (isset($data['brightness'])) {
-                if (!$validator->validateBrightness($data['brightness'])) {
-                    return new Response(['errors' => $validator->getErrors()], 400);
-                }
-                $device->setBrightness((int)$data['brightness']);
+        // Update features dynamically
+        foreach ($data as $key => $value) {
+            if ($key === 'deviceId') {
+                continue; // Skip deviceId
             }
 
-            if (isset($data['color'])) {
-                if (!$validator->validateColor($data['color'])) {
-                    return new Response(['errors' => $validator->getErrors()], 400);
-                }
-                $device->setColor($data['color']);
-            }
-        }
-
-        // Update Thermostat settings
-        if ($device instanceof Thermostat) {
-            if (isset($data['targetTemperature'])) {
-                if (!$validator->validateTemperature($data['targetTemperature'])) {
-                    return new Response(['errors' => $validator->getErrors()], 400);
-                }
-                $device->setTargetTemperature((float)$data['targetTemperature']);
-            }
-
-            if (isset($data['mode'])) {
-                if (!$validator->validateMode($data['mode'])) {
-                    return new Response(['errors' => $validator->getErrors()], 400);
-                }
-                $device->setMode($data['mode']);
+            $feature = $device->getFeature($key);
+            if ($feature) {
+                $feature->setValue($value);
+            } else {
+                return new Response(['error' => "Feature '{$key}' not supported by this device"], 400);
             }
         }
 

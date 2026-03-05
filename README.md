@@ -13,28 +13,38 @@ A professional PHP Smart Home API built with PSR-12 standards, featuring a route
 - ✅ **Mock Repository** - Decoupled data layer for easy testing
 - ✅ **Multiple Device Types** - Support for lights, thermostats, and more
 - ✅ **Modular Design** - Clean, maintainable code structure
+- ✅ **Feature System** - Reusable device traits for flexible device modeling
 
 ## Project Structure
 
 ```
 homecontrolapi/
 ├── src/
+│   ├── Features/
+│   │   ├── Feature.php           # Feature interface
+│   │   ├── BaseFeature.php       # Base feature implementation
+│   │   ├── OnOffFeature.php      # On/off functionality
+│   │   ├── BrightnessFeature.php # Brightness control
+│   │   ├── ColorFeature.php      # Color control
+│   │   ├── TemperatureFeature.php # Temperature setting
+│   │   ├── ModeFeature.php       # Operating mode
+│   │   └── FeatureRegistry.php   # Feature registration and querying
 │   ├── Http/
-│   │   ├── Router.php       # URL routing and request dispatching
-│   │   ├── Response.php     # HTTP response handling
-│   │   └── Validator.php    # Input validation
+│   │   ├── Router.php            # URL routing and request dispatching
+│   │   ├── Response.php          # HTTP response handling
+│   │   └── Validator.php         # Input validation
 │   ├── Middleware/
-│   │   └── JsonMiddleware.php  # JSON headers and CORS
+│   │   └── JsonMiddleware.php    # JSON headers and CORS
 │   ├── Models/
-│   │   ├── Device.php       # Base device class
-│   │   ├── Light.php        # Light device implementation
-│   │   ├── Thermostat.php   # Thermostat device implementation
-│   │   └── Room.php         # Room model
+│   │   ├── Device.php            # Base device class with features
+│   │   ├── Light.php             # Light device with on_off, brightness, color
+│   │   ├── Thermostat.php        # Thermostat with on_off, temperature, mode
+│   │   └── Room.php              # Room model
 │   └── Repository/
-│       └── HomeRepository.php  # Mock data storage
+│       └── HomeRepository.php    # Mock data storage
 ├── public/
-│   └── index.php            # API entry point
-└── composer.json            # Dependencies and autoloading
+│   └── index.php                 # API entry point
+└── composer.json                 # Dependencies and autoloading
 ```
 
 ## Installation
@@ -70,6 +80,61 @@ Check API health status.
   "timestamp": 1770822851,
   "service": "Smart Home API",
   "version": "1.0.0"
+}
+```
+
+---
+
+### Get All Features
+**GET /features**
+
+Retrieve all available device features/traits.
+
+**Response:**
+```json
+{
+  "features": [
+    {
+      "id": "on_off",
+      "name": "On/Off",
+      "description": "Controls whether the device is turned on or off.",
+      "value": false,
+      "enabled": true,
+      "schema": {
+        "type": "boolean",
+        "description": "True for on, false for off."
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Get Specific Feature
+**GET /features/{id}**
+
+Retrieve details for a specific feature.
+
+**Parameters:**
+- `id` (string): Feature ID (e.g., "brightness", "temperature")
+
+**Response:**
+```json
+{
+  "feature": {
+    "id": "brightness",
+    "name": "Brightness",
+    "description": "Controls the brightness level of the device (0-100).",
+    "value": 100,
+    "enabled": true,
+    "schema": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Brightness level from 0 (off) to 100 (full brightness)."
+    }
+  }
 }
 ```
 
